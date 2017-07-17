@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -42,7 +43,8 @@ func main() {
 				log.Printf("\tOk. Service %s is up after about %d seconds.\n", smallv, totSecs)
 			}
 		} else if strings.HasPrefix(smallv, "postgres") {
-			pollPostgres(smallv, PollIntervals)
+			useDbPing := false
+			pollPostgres(smallv, PollIntervals, useDbPing)
 		}
 	}
 }
@@ -99,7 +101,7 @@ func httpPoll(url string) bool {
 	return isIn([]int{200}, resp.StatusCode)
 }
 
-func pollPostgres(url string, pollIntervals []int) (bool, int) {
+func pollPostgres(url string, pollIntervals []int, useDbPing bool) (bool, int) {
 
 	log.Printf("Checking if %s is up.\n", url)
 	isUp := false
@@ -114,10 +116,18 @@ func pollPostgres(url string, pollIntervals []int) (bool, int) {
 		log.Printf("\tNext poll after %d seconds.\n", pollInt)
 		totSecs += pollInt
 		time.Sleep(time.Second * time.Duration(pollInt))
-		out, _ := captureOutput(exec.Command("pg_isready", url))
-		if bytes.IndexAny(out, "accepting connections") >= 0 {
-			isUp = true
-			break
+
+		if !useDbPing {
+			out, _ := captureOutput(exec.Command("pg_isready", url))
+			if bytes.IndexAny(out, "accepting connections") >= 0 {
+				isUp = true
+				break
+			}
+		} else {
+			if postgresDBPing(url) {
+				isUp = true
+				break
+			}
 		}
 	}
 
@@ -128,6 +138,21 @@ func pollPostgres(url string, pollIntervals []int) (bool, int) {
 
 	// log.Printf("\t%s timeout\n", url)
 	return false, totSecs
+}
+
+// url format: fmt.Sprintf("postgres://user:password@host:port/db"
+func postgresDBPing(url string) bool {
+
+	db, err := sql.Open("pgx", url)
+	if err != nil {
+		return false
+	}
+
+	err = db.Ping()
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func captureOutput(cmd *exec.Cmd) ([]byte, error) {
