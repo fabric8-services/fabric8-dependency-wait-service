@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -167,4 +168,32 @@ func isIn(list []int, val int) bool {
 		}
 	}
 	return false
+}
+
+func isInPath(cmd string) error {
+	_, err := exec.LookPath(cmd)
+	return err
+}
+
+// returns the host and port of the postgres url
+func splitPostgresURL(pgURL string) (string, string, error) {
+	u, err := url.Parse(pgURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	if u.Scheme != "postgres" {
+		return "", "", fmt.Errorf("Expected a postgres scheme. Received: %s", u.Scheme)
+	}
+
+	var host, port string
+	h := strings.Split(u.Host, ":")
+	if len(h) >= 1 {
+		host = h[0]
+	}
+	if len(h) >= 2 {
+		port = h[1]
+	}
+
+	return host, port, nil
 }
