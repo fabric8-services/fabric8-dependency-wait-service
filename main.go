@@ -16,9 +16,11 @@ import (
 var PollIntervals = []int{
 	//1, 2, 2, // polls after 1sec, 2secs, 2secs, then stops
 	//1, -2, // polls after 1sec, then infinitely every 2 seconds
+	0, -5, // polls immediately, then infinitely every 5 seconds
 
 	// 1, 2, 2, 5, 5, 10, 10, 10, 10, 10, 10, 10, 10, 10,
-	1, 2, 2,
+	// 1, 2, 2,
+
 }
 
 func main() {
@@ -45,7 +47,12 @@ func main() {
 			}
 		} else if strings.HasPrefix(smallv, "postgres") {
 			useDbPing := false
-			pollPostgres(smallv, PollIntervals, useDbPing)
+			isUp, totSecs := pollPostgres(smallv, PollIntervals, useDbPing)
+			if !isUp {
+				log.Fatalf("\tNot ok. Service %s polling timedout after %d seconds.\n", smallv, totSecs)
+			} else {
+				log.Printf("\tOk. Service %s is up after about %d seconds.\n", smallv, totSecs)
+			}
 		}
 	}
 }
@@ -104,6 +111,22 @@ func httpPoll(url string) bool {
 
 func pollPostgres(url string, pollIntervals []int, useDbPing bool) (bool, int) {
 
+	pg_isready := "pg_isready"
+
+	// check if pg_isready exists
+	err := isInPath(pg_isready)
+	if err != nil {
+		log.Printf("Cannot continue, required command %s not found in path.\n", pg_isready)
+		return false, -1
+	}
+
+	// split url into host and port
+	host, port, err := splitPostgresURL(url)
+	if err != nil {
+		log.Printf("Invalid postgres url. Should be in the form: postgres://host:port")
+		return false, -1
+	}
+
 	log.Printf("Checking if %s is up.\n", url)
 	isUp := false
 	totSecs := 0
@@ -119,8 +142,9 @@ func pollPostgres(url string, pollIntervals []int, useDbPing bool) (bool, int) {
 		time.Sleep(time.Second * time.Duration(pollInt))
 
 		if !useDbPing {
-			out, _ := captureOutput(exec.Command("pg_isready", url))
-			if bytes.IndexAny(out, "accepting connections") >= 0 {
+			out, _ := captureOutput(exec.Command(pg_isready, "-h", host, "-p", port))
+			log.Print("\tpg_isready response: " + string(out))
+			if bytes.Index(out, []byte("accepting connections")) >= 0 {
 				isUp = true
 				break
 			}
