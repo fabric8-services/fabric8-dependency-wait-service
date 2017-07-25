@@ -58,9 +58,25 @@ out/fabric8-dependency-wait-service-windows-amd64.exe:
 out/fabric8-dependency-wait-service-linux-arm: 
 	CGO_ENABLED=0 GOARCH=arm GOOS=linux go build $(BUILDFLAGS) -o $(BUILD_DIR)/fabric8-dependency-wait-service-linux-arm $(ROOT_PACKAGE)
 
+.PHONY: test
+test: 
+	go test -v 
+
+.PHONY: release
+release: clean test cross
+	mkdir -p release
+	cp out/fabric8-dependency-wait-service-*-amd64* release
+	cp out/fabric8-dependency-wait-service-*-arm* release
+	gh-release checksums sha256
+	gh-release create fabric8io/fabric8-dependency-wait-service $(VERSION) master v$(VERSION)
+
+.PHONY: cross
+cross: out/fabric8-dependency-wait-service-linux-amd64 out/fabric8-dependency-wait-service-darwin-amd64 out/fabric8-dependency-wait-service-windows-amd64.exe out/fabric8-dependency-wait-service-linux-arm
+
+
 .PHONY: clean
 clean:
-	rm -r out/
+	rm -rf out/
 
 .PHONY: docker
 docker: out/fabric8-dependency-wait-service-linux-amd64

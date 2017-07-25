@@ -16,3 +16,4 @@
 # build outputs
 fabric8-dependency-wait-service
 out/*
+release/*
