@@ -68,7 +68,7 @@ release: clean test cross
 	cp out/fabric8-dependency-wait-service-*-amd64* release
 	cp out/fabric8-dependency-wait-service-*-arm* release
 	gh-release checksums sha256
-	gh-release create fabric8io/fabric8-dependency-wait-service $(VERSION) master v$(VERSION)
+	gh-release create fabric8-services/fabric8-dependency-wait-service $(VERSION) master v$(VERSION)
 
 .PHONY: cross
 cross: out/fabric8-dependency-wait-service-linux-amd64 out/fabric8-dependency-wait-service-darwin-amd64 out/fabric8-dependency-wait-service-windows-amd64.exe out/fabric8-dependency-wait-service-linux-arm
