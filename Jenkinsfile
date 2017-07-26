@@ -1,5 +1,6 @@
 #!/usr/bin/groovy
-@Library('github.com/rawlingsj/fabric8-pipeline-library@master')
+@Library('github.com/fabric8io/fabric8-pipeline-library@master')
+//@Library('github.com/rawlingsj/fabric8-pipeline-library@master')
 def dummy
 goNode{
   dockerNode{
