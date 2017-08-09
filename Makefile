@@ -13,7 +13,7 @@
 # limitations under the License.
 
 GO := GO15VENDOREXPERIMENT=1 go
-VERSION ?= $(shell cat version/VERSION)
+VERSION=$(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 REVISION=$(shell git rev-parse --short HEAD 2> /dev/null || echo 'unknown')
 BRANCH=$(shell git rev-parse --abbrev-ref HEAD 2> /dev/null || echo 'unknown')
 HOST=$(shell hostname -f)
