@@ -2,7 +2,7 @@
 @Library('github.com/fabric8io/fabric8-pipeline-library@master')
 //@Library('github.com/rawlingsj/fabric8-pipeline-library@master')
 def dummy
-goNode{
+goTemplate{
   dockerNode{
     if (env.BRANCH_NAME.startsWith('PR-')) {
       goCI{
