@@ -121,7 +121,7 @@ func pollPostgres(url string, pollIntervals []int, useDbPing bool) (bool, int) {
 	}
 
 	// split url into host and port
-	host, port, err := splitPostgresURL(url)
+	host, port, username, err := splitPostgresURL(url)
 	if err != nil {
 		log.Printf("Invalid postgres url. Should be in the form: postgres://host:port")
 		return false, -1
@@ -142,7 +142,13 @@ func pollPostgres(url string, pollIntervals []int, useDbPing bool) (bool, int) {
 		time.Sleep(time.Second * time.Duration(pollInt))
 
 		if !useDbPing {
-			out, _ := captureOutput(exec.Command(pg_isready, "-h", host, "-p", port))
+			var out []byte
+			username = strings.TrimSpace(username)
+			if len(username) == 0 {
+				out, _ = captureOutput(exec.Command(pg_isready, "-h", host, "-p", port))
+			} else {
+				out, _ = captureOutput(exec.Command(pg_isready, "-h", host, "-p", port, "-U", username))
+			}
 			log.Print("\tpg_isready response: " + string(out))
 			if bytes.Index(out, []byte("accepting connections")) >= 0 {
 				isUp = true
@@ -199,15 +205,15 @@ func isInPath(cmd string) error {
 	return err
 }
 
-// returns the host and port of the postgres url
-func splitPostgresURL(pgURL string) (string, string, error) {
+// returns the host, port, username of the postgres url
+func splitPostgresURL(pgURL string) (string, string, string, error) {
 	u, err := url.Parse(pgURL)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
 	if u.Scheme != "postgres" {
-		return "", "", fmt.Errorf("Expected a postgres scheme. Received: %s", u.Scheme)
+		return "", "", "", fmt.Errorf("Expected a postgres scheme. Received: %s", u.Scheme)
 	}
 
 	var host, port string
@@ -219,5 +225,10 @@ func splitPostgresURL(pgURL string) (string, string, error) {
 		port = h[1]
 	}
 
-	return host, port, nil
+	username := ""
+	if u.User != nil {
+		username = u.User.Username()
+	}
+
+	return host, port, username, nil
 }

@@ -29,9 +29,9 @@ func Test_isInPath(t *testing.T) {
 }
 
 func Test_splitPostgresURL(t *testing.T) {
-	var h, p, hExp, pExp string
+	var h, p, u, hExp, pExp, uExp string
 	var err error
-	h, p, err = splitPostgresURL("postgres://127.0.0.1:230")
+	h, p, u, err = splitPostgresURL("postgres://127.0.0.1:230")
 	if err != nil {
 		t.Errorf("Expected error to be nil. Got %v.\n", err)
 	}
@@ -43,10 +43,14 @@ func Test_splitPostgresURL(t *testing.T) {
 	if p != pExp {
 		t.Errorf("Expected port to be %s. Got %s.\n", pExp, p)
 	}
+	uExp = ""
+	if u != uExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", uExp, u)
+	}
 
-	h, p, err = splitPostgresURL("postgres://127.0.0.1:230/")
+	h, p, u, err = splitPostgresURL("postgres://127.0.0.1:230/")
 	if err != nil {
-		t.Errorf("Expected error to be %v. Got %v.\n", err)
+		t.Errorf("Expected error to be %v. Got %v.\n", nil, err)
 	}
 	hExp = "127.0.0.1"
 	if h != hExp {
@@ -56,10 +60,14 @@ func Test_splitPostgresURL(t *testing.T) {
 	if p != pExp {
 		t.Errorf("Expected port to be %s. Got %s.\n", pExp, p)
 	}
+	uExp = ""
+	if u != uExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", uExp, u)
+	}
 
-	h, p, err = splitPostgresURL("postgres://localhost/")
+	h, p, u, err = splitPostgresURL("postgres://localhost/")
 	if err != nil {
-		t.Errorf("Expected error to be %v. Got %v.\n", err)
+		t.Errorf("Expected error to be %v. Got %v.\n", nil, err)
 	}
 	hExp = "localhost"
 	if h != hExp {
@@ -69,9 +77,68 @@ func Test_splitPostgresURL(t *testing.T) {
 	if p != pExp {
 		t.Errorf("Expected port to be %s. Got %s.\n", pExp, p)
 	}
+	uExp = ""
+	if u != uExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", uExp, u)
+	}
 
-	h, p, err = splitPostgresURL("1postgres://localhost/")
+	h, p, u, err = splitPostgresURL("1postgres://localhost/")
 	if err == nil {
 		t.Errorf("Expected error to be non nil. Got %v.\n", err)
+	}
+}
+
+func Test_splitPostgresURL_withUser(t *testing.T) {
+	var h, p, u, hExp, pExp, uExp string
+	var err error
+	h, p, u, err = splitPostgresURL("postgres://user1@127.0.0.1:230")
+	if err != nil {
+		t.Errorf("Expected error to be nil. Got %v.\n", err)
+	}
+	hExp = "127.0.0.1"
+	if h != hExp {
+		t.Errorf("Expected host to be %s. Got %s.\n", hExp, h)
+	}
+	pExp = "230"
+	if p != pExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", pExp, p)
+	}
+	uExp = "user1"
+	if u != uExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", uExp, u)
+	}
+
+	h, p, u, err = splitPostgresURL("postgres://@127.0.0.1:230")
+	if err != nil {
+		t.Errorf("Expected error to be nil. Got %v.\n", err)
+	}
+	hExp = "127.0.0.1"
+	if h != hExp {
+		t.Errorf("Expected host to be %s. Got %s.\n", hExp, h)
+	}
+	pExp = "230"
+	if p != pExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", pExp, p)
+	}
+	uExp = ""
+	if u != uExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", uExp, u)
+	}
+
+	h, p, u, err = splitPostgresURL("postgres://abcd.efgh.ijkl@127.0.0.1:230")
+	if err != nil {
+		t.Errorf("Expected error to be nil. Got %v.\n", err)
+	}
+	hExp = "127.0.0.1"
+	if h != hExp {
+		t.Errorf("Expected host to be %s. Got %s.\n", hExp, h)
+	}
+	pExp = "230"
+	if p != pExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", pExp, p)
+	}
+	uExp = "abcd.efgh.ijkl"
+	if u != uExp {
+		t.Errorf("Expected port to be %s. Got %s.\n", uExp, u)
 	}
 }
