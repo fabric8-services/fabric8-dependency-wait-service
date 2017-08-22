@@ -23,7 +23,11 @@ var PollIntervals = []int{
 
 }
 
+var gVerbose bool
+
 func main() {
+
+	gVerbose = true
 
 	if len(os.Args) == 1 {
 		return
@@ -83,6 +87,10 @@ func pollHTTP200(url string, pollIntervals []int) (bool, int) {
 		log.Printf("\tNext poll after %d seconds.\n", pollInt)
 		totSecs += pollInt
 		time.Sleep(time.Second * time.Duration(pollInt))
+
+		if gVerbose {
+			log.Printf("\tGoing to checck %s\n", url)
+		}
 		ok := httpPoll(url)
 		if ok {
 			isUp = true
@@ -144,11 +152,23 @@ func pollPostgres(url string, pollIntervals []int, useDbPing bool) (bool, int) {
 		if !useDbPing {
 			var out []byte
 			username = strings.TrimSpace(username)
-			if len(username) == 0 {
-				out, _ = captureOutput(exec.Command(pg_isready, "-h", host, "-p", port))
-			} else {
-				out, _ = captureOutput(exec.Command(pg_isready, "-h", host, "-p", port, "-U", username))
+
+			exe := pg_isready
+			args := []string{
+				"-h", host,
+				"-p", port,
 			}
+
+			if len(username) > 0 {
+				args = append(args, []string{"-U", username}...)
+			}
+
+			if gVerbose {
+				log.Printf("\tGoing to execute: %s, %v\n", exe, args)
+			}
+
+			out, _ = captureOutput(exec.Command(exe, args...))
+
 			log.Print("\tpg_isready response: " + string(out))
 			if bytes.Index(out, []byte("accepting connections")) >= 0 {
 				isUp = true
