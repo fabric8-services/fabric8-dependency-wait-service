@@ -9,14 +9,16 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
 
-var PollIntervals = []int{
+var defaultPollIntervals = []int{
 	//1, 2, 2, // polls after 1sec, 2secs, 2secs, then stops
 	//1, -2, // polls after 1sec, then infinitely every 2 seconds
-	0, -5, // polls immediately, then infinitely every 5 seconds
+	//0, -5, // polls immediately, then infinitely every 5 seconds
+	0, -1, // polls immediately, then infinitely every 1 seconds
 
 	// 1, 2, 2, 5, 5, 10, 10, 10, 10, 10, 10, 10, 10, 10,
 	// 1, 2, 2,
@@ -27,11 +29,13 @@ var gVerbose bool
 
 func main() {
 
-	gVerbose = true
+	gVerbose = getVerbosity()
 
 	if len(os.Args) == 1 {
 		return
 	}
+
+	pollIntervals := getPollIntervals()
 
 	// first check if all urls are valid
 	err := isAllProtocolsValid(os.Args[1:])
@@ -43,7 +47,7 @@ func main() {
 	for _, v := range os.Args[1:] {
 		smallv := strings.ToLower(v)
 		if strings.HasPrefix(smallv, "http") {
-			isUp, totSecs := pollHTTP200(smallv, PollIntervals)
+			isUp, totSecs := pollHTTP200(smallv, pollIntervals)
 			if !isUp {
 				log.Fatalf("\tNot ok. Service %s polling timedout after %d seconds.\n", smallv, totSecs)
 			} else {
@@ -51,7 +55,7 @@ func main() {
 			}
 		} else if strings.HasPrefix(smallv, "postgres") {
 			useDbPing := false
-			isUp, totSecs := pollPostgres(smallv, PollIntervals, useDbPing)
+			isUp, totSecs := pollPostgres(smallv, pollIntervals, useDbPing)
 			if !isUp {
 				log.Fatalf("\tNot ok. Service %s polling timedout after %d seconds.\n", smallv, totSecs)
 			} else {
@@ -89,7 +93,7 @@ func pollHTTP200(url string, pollIntervals []int) (bool, int) {
 		time.Sleep(time.Second * time.Duration(pollInt))
 
 		if gVerbose {
-			log.Printf("\tGoing to checck %s\n", url)
+			log.Printf("\tGoing to check %s\n", url)
 		}
 		ok := httpPoll(url)
 		if ok {
@@ -251,4 +255,44 @@ func splitPostgresURL(pgURL string) (string, string, string, error) {
 	}
 
 	return host, port, username, nil
+}
+
+func getPollIntervals() []int {
+	key := "DEPENDENCY_POLL_INTERVAL"
+	intervalStr := strings.TrimSpace(os.Getenv(key))
+	if len(intervalStr) == 0 {
+		return defaultPollIntervals
+	}
+
+	interval, err := strconv.Atoi(intervalStr)
+	if err != nil || interval <= 0 {
+		log.Printf("Error: Dependency service key %s has invalid value: %s. Should be a positive integer.\n", key, intervalStr)
+		os.Exit(1)
+	}
+
+	if gVerbose {
+		log.Printf("Got env value for poll interval. Will poll every %d seconds.\n", interval)
+	}
+
+	return []int{0, -interval}
+}
+
+func getVerbosity() bool {
+	key := "DEPENDENCY_LOG_VERBOSE"
+	verbosityStr := strings.TrimSpace(os.Getenv(key))
+	if len(verbosityStr) == 0 {
+		return false
+	}
+
+	verbosity, err := strconv.ParseBool(verbosityStr)
+	if err != nil {
+		log.Printf("Error: Dependency service key %s has invalid value: %s. Should be true/false.\n", key, verbosityStr)
+		os.Exit(1)
+	}
+
+	if verbosity {
+		log.Printf("Got env value verbose: %t.\n", verbosity)
+	}
+
+	return verbosity
 }
